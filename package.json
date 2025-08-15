@@ -10,7 +10,10 @@
     "dev:ui": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "cd agent && npm test",
+    "test:watch": "cd agent && npm run test:watch",
+    "test:coverage": "cd agent && npm run test:coverage"
   },
   "dependencies": {
     "@ag-ui/langgraph": "0.0.7",
