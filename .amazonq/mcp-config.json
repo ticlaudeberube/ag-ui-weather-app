@@ -1,0 +1,42 @@
+{
+  "mcpServers": {
+    "copilotkit": {
+      "url": "https://mcp.copilotkit.ai/sse",
+      "transport": "sse"
+    },
+    "fetch": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-fetch"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-filesystem", "/Users/claude/Documents/workspace/my-ag-ui-app"]
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "your-brave-api-key"
+      }
+    },
+    "github": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "your-github-token"
+      }
+    },
+    "typescript": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-typescript"]
+    },
+    "eslint": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-eslint"]
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-puppeteer"]
+    }
+  }
+}

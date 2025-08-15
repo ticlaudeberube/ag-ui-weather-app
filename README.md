@@ -86,6 +86,30 @@ The following scripts can also be run using your preferred package manager:
 - `lint` - Runs ESLint for code linting
 - `install:agent` - Installs Python dependencies for the agent
 
+## MCP Servers
+
+This project is configured with multiple Model Context Protocol (MCP) servers to enhance AI agent capabilities:
+
+### Core Servers
+- **CopilotKit** (`https://mcp.copilotkit.ai/sse`): AI tools and enhanced capabilities
+- **Fetch**: HTTP requests, API calls, and web scraping
+- **Filesystem**: File operations within the project directory
+
+### Search & Repository
+- **Brave Search**: Web search for current information, documentation, and troubleshooting
+- **GitHub**: Repository management, issue tracking, and code search
+
+### Development Tools
+- **TypeScript**: Code analysis, type checking, and IntelliSense
+- **ESLint**: Code linting, style checking, and best practices
+- **Puppeteer**: Browser automation and React component testing
+
+### Environment Setup
+```bash
+BRAVE_API_KEY=your-brave-api-key
+GITHUB_PERSONAL_ACCESS_TOKEN=your-github-token
+```
+
 ## Documentation
 
 The main UI component is in `src/app/page.tsx`. You can:
@@ -112,6 +136,12 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ### Agent Connection Issues
 If you see "I'm having trouble connecting to my tools", make sure:
-1. The LangGraph agent is running on port 8000
+1. The LangGraph agent is running on port 8123
 2. Your OpenAI API key is set correctly
 3. Both servers started successfully
+
+### MCP Server Issues
+If MCP servers aren't working:
+1. Ensure required environment variables are set
+2. Check that MCP packages are installed globally: `npm install -g @modelcontextprotocol/server-*`
+3. Verify API keys for Brave Search and GitHub
