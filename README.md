@@ -13,6 +13,32 @@ This is a starter template for building AI agents using [LangGraph](https://www.
   - [bun](https://bun.sh/)
 - OpenAI API Key (for the LangGraph agent)
 
+## Model Configuration
+
+The project automatically selects between OpenAI and local Ollama models:
+
+**Automatic Fallback Pattern:**
+- If `OPENAI_API_KEY` is set and not empty → Uses OpenAI
+- If `OPENAI_API_KEY` is empty or unset → Uses local Ollama
+
+Customize models and settings in `agent/.env`:
+```bash
+# Model temperature (0-1)
+MODEL_TEMPERATURE=0
+
+# OpenAI settings (uncomment to use OpenAI)
+# OPENAI_API_KEY=your-api-key
+# OPENAI_MODEL=gpt-4o
+
+# Ollama settings (used when no OpenAI key)
+OLLAMA_MODEL=llama3.2:3b
+OLLAMA_BASE_URL=http://localhost:11434
+
+# LangSmith (optional - for monitoring/debugging)
+# LANGSMITH_API_KEY=your-langsmith-api-key
+# LANGSMITH_PROJECT=your-project-name
+```
+
 > **Note:** This repository ignores lock files (package-lock.json, yarn.lock, pnpm-lock.yaml, bun.lockb) to avoid conflicts between different package managers. Each developer should generate their own lock file using their preferred package manager. After that, make sure to delete it from the .gitignore.
 
 ## Getting Started
@@ -50,11 +76,40 @@ yarn install
 bun run install
 ```
 
-3. Set up your OpenAI API key:
+3. Set up local models (Ollama):
+```bash
+# Install Ollama
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Pull a model (e.g., llama3.2)
+ollama pull llama3.2
+
+# Start Ollama (runs on http://localhost:11434)
+ollama serve
+```
+
+Alternatively, to use OpenAI:
 ```bash
 cd agent
 echo "OPENAI_API_KEY=your-openai-api-key-here" > .env
 ```
+
+
+
+4. (Optional) Set up environment variables in `.env.local`:
+```bash
+# CopilotKit Cloud (optional)
+echo "COPILOT_CLOUD_PUBLIC_API_KEY=your-copilotkit-key" >> .env.local
+
+# MCP Server API Keys (optional)
+echo "BRAVE_API_KEY=your-brave-api-key" >> .env.local
+echo "GITHUB_PERSONAL_ACCESS_TOKEN=your-github-token" >> .env.local
+```
+
+**API Key Sources:**
+- **CopilotKit**: Get from https://cloud.copilotkit.ai
+- **Brave Search**: Sign up at https://api.search.brave.com/
+- **GitHub**: Generate at https://github.com/settings/tokens
 
 4. Start the development server:
 ```bash
@@ -91,21 +146,34 @@ The following scripts can also be run using your preferred package manager:
 This project is configured with multiple Model Context Protocol (MCP) servers to enhance AI agent capabilities:
 
 ### Core Servers
-- **CopilotKit** (`https://mcp.copilotkit.ai/sse`): AI tools and enhanced capabilities
-- **Fetch**: HTTP requests, API calls, and web scraping
-- **Filesystem**: File operations within the project directory
+- **CopilotKit** (`https://mcp.copilotkit.ai/sse`): Enhanced AI capabilities and tool orchestration
+- **Fetch**: Make HTTP requests, call APIs, scrape websites for real-time data
+- **Filesystem**: Read/write project files, navigate directories, manage codebase
 
 ### Search & Repository
-- **Brave Search**: Web search for current information, documentation, and troubleshooting
-- **GitHub**: Repository management, issue tracking, and code search
+- **Brave Search**: Search web for documentation, tutorials, and current information
+- **GitHub**: Access repositories, search code, read documentation, manage issues
 
 ### Development Tools
-- **TypeScript**: Code analysis, type checking, and IntelliSense
-- **ESLint**: Code linting, style checking, and best practices
-- **Puppeteer**: Browser automation and React component testing
+- **TypeScript**: Analyze code, check types, provide IntelliSense suggestions
+- **ESLint**: Lint code, enforce style rules, suggest best practices
+- **Puppeteer**: Automate browsers, test React components, take screenshots
+
+### Usage Examples
+With these MCP servers, your agent can:
+- **"How do I add authentication?"** → Search web + read your files + suggest implementation
+- **"Fix TypeScript errors"** → Analyze code + provide fixes + update files
+- **"Find React examples"** → Search GitHub + fetch code samples + explain patterns
+- **"Test this component"** → Use Puppeteer + create automated tests
+- **"Get latest package info"** → Fetch from npm API + suggest updates
 
 ### Environment Setup
+Add these to your `.env.local` file in the project root:
 ```bash
+# CopilotKit Cloud (optional)
+COPILOT_CLOUD_PUBLIC_API_KEY=your-copilotkit-api-key
+
+# MCP Server API Keys (optional)
 BRAVE_API_KEY=your-brave-api-key
 GITHUB_PERSONAL_ACCESS_TOKEN=your-github-token
 ```
