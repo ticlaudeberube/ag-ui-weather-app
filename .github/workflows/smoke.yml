@@ -1,6 +1,7 @@
 name: Smoke
 
 on:
+  workflow_dispatch:
   push:
     branches: main
   pull_request:
@@ -35,65 +36,59 @@ jobs:
           cd agent
           npm install
 
-      - name: Build
-        run: npm run build || echo "No build script in root"
-      - name: Start and check main app (Linux/macOS)
+      - name: Build Next.js app
+        run: npm run build
+
+      - name: Start and check Next.js app (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
-          # Start the server in background
-          npm start &
+          npm run start &
           SERVER_PID=$!
-          
-          # Wait for server to start (max 30 seconds)
           timeout=30
           elapsed=0
           started=false
-          
+
           while [ $elapsed -lt $timeout ] && [ "$started" = false ]; do
             if curl -s http://localhost:3000 > /dev/null 2>&1; then
               started=true
-              echo "✅ Main app started successfully"
+              echo "✅ Next.js app started successfully"
             else
               sleep 1
               elapsed=$((elapsed + 1))
             fi
           done
-          
-          # Clean up background process
+
           kill $SERVER_PID 2>/dev/null || true
-          
+
           if [ "$started" = false ]; then
-            echo "❌ Main app failed to start within 30 seconds"
+            echo "❌ Next.js app failed to start within 30 seconds"
             exit 1
           fi
         shell: bash
 
-      - name: Start and check main app (Windows)
+      - name: Start and check Next.js app (Windows)
         if: runner.os == 'Windows'
         run: |
-          # Start the server in background
-          npm start &
-          
-          # Wait for server to start (max 30 seconds)
+          npm run start &
           $timeout = 30
           $elapsed = 0
           $started = $false
-          
+
           while ($elapsed -lt $timeout -and -not $started) {
             try {
               $response = Invoke-WebRequest -Uri "http://localhost:3000" -TimeoutSec 1 -ErrorAction SilentlyContinue
               if ($response.StatusCode -eq 200) {
                 $started = $true
-                Write-Host "✅ Main app started successfully"
+                Write-Host "✅ Next.js app started successfully"
               }
             } catch {
               Start-Sleep -Seconds 1
               $elapsed++
             }
           }
-          
+
           if (-not $started) {
-            Write-Host "❌ Main app failed to start within 30 seconds"
+            Write-Host "❌ Next.js app failed to start within 30 seconds"
             exit 1
           }
         shell: pwsh
@@ -119,8 +114,8 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":warning: *Smoke test failed for <https://github.com/copilotkit/with-langgraph-js|with-langgraph-js> :warning:*\n\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run details>"
+                    "text": ":warning: *Smoke test failed for <https://github.com/copilotkit/with-langgraph-js|with-langgraph-js> :warning:*\n\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
                   }
                 }
               ]
-            } 
+            }
