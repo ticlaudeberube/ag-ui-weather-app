@@ -11,9 +11,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "cd agent && npm test",
-    "test:watch": "cd agent && npm run test:watch",
-    "test:coverage": "cd agent && npm run test:coverage"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@ag-ui/langgraph": "0.0.7",
@@ -29,13 +29,17 @@
     "@eslint/eslintrc": "^3",
     "@langchain/langgraph-cli": "0.0.40",
     "@tailwindcss/postcss": "^4",
+    "@types/jest": "^29.5.14",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "concurrently": "^9.1.2",
     "eslint": "^9",
     "eslint-config-next": "15.3.2",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "tailwindcss": "^4",
+    "ts-jest": "^29.2.5",
     "typescript": "^5"
   }
 }
