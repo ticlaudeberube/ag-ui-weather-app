@@ -9,13 +9,12 @@ import { tool } from "@langchain/core/tools";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { AIMessage, SystemMessage } from "@langchain/core/messages";
 import { MemorySaver, START, StateGraph } from "@langchain/langgraph";
-import { createModel } from "./model-provider.js";
+import { createModel } from "./services/model-provider";
 import { convertActionsToDynamicStructuredTools } from "@copilotkit/sdk-js/langgraph";
 import { BaseMessage } from "@langchain/core/messages";
 import { Annotation } from "@langchain/langgraph";
 
-// 1. Define our agent state, which includes CopilotKit state to
-//    provide actions to the state.
+// 1. Define our agent state for weather forecaster
 const AgentStateAnnotation = Annotation.Root({
   // Define a 'messages' channel to store an array of BaseMessage objects
   messages: Annotation<BaseMessage[]>({
@@ -24,23 +23,45 @@ const AgentStateAnnotation = Annotation.Root({
     // Default function: Initialize the channel with an empty array
     default: () => [],
   }),
-  proverbs: Annotation<string[]>,
+  lastLocation: Annotation<string>,
   tools: Annotation<any[]>, // ag-ui tools will be added here
 });
 
 // 2. Define the type for our agent state
 export type AgentState = typeof AgentStateAnnotation.State;
 
-// 3. Define a simple tool to get the weather statically
-const getWeather = tool(
-  (args) => {
-    return `The weather for ${args.location} is 70 degrees, clear skies, 45% humidity, 5 mph wind, and feels like 72 degrees.`;
+import { WeatherService } from '../../src/lib/services/weather.service';
+
+// 3. Define weather tool with real service integration
+const weatherService = new WeatherService();
+
+export const getWeather = tool(
+  async (args) => {
+    console.log('getWeather called with:', args);
+    let weather;
+    
+    if (args.latitude && args.longitude) {
+      weather = await weatherService.getWeatherByCoordinates(args.latitude, args.longitude);
+    } else {
+      weather = await weatherService.getWeather(args.location || '');
+    }
+    
+    console.log('Weather service returned:', weather);
+    const isMetric = weatherService.isMetricLocation(weather.name);
+    const tempUnit = isMetric ? '°C' : '°F';
+    const windUnit = isMetric ? 'km/h' : 'mph';
+    
+    const result = `The weather in ${weather.name} is ${weather.temperature}${tempUnit} with ${weather.description}. The humidity is ${weather.humidity}%, the wind speed is ${weather.windSpeed} ${windUnit} and the feels like temperature is ${weather.feelsLike}${tempUnit}.`;
+    console.log('Returning:', result);
+    return result;
   },
   {
     name: "getWeather",
-    description: "Get the weather for a given location.",
+    description: "Get weather by location name OR coordinates. Returns city name from weather service.",
     schema: z.object({
-      location: z.string().describe("The location to get weather for"),
+      location: z.string().optional().describe("The location name to get weather for"),
+      latitude: z.number().optional().describe("Latitude coordinate"),
+      longitude: z.number().optional().describe("Longitude coordinate"),
     }),
   }
 );
@@ -49,7 +70,7 @@ const getWeather = tool(
 const tools = [getWeather];
 
 // 5. Define the chat node, which will handle the chat logic
-async function chat_node(state: AgentState, config: RunnableConfig) {
+export async function chat_node(state: AgentState, config: RunnableConfig) {
   // 5.1 Define the model using the provider
   const model = createModel();
 
@@ -62,10 +83,9 @@ async function chat_node(state: AgentState, config: RunnableConfig) {
     ],
   );
 
-  // 5.3 Define the system message, which will be used to guide the model, in this case
-  //     we also add in the language to use from the state.
+  // 5.3 Define the system message for weather forecaster personality
   const systemMessage = new SystemMessage({
-    content: `You are a helpful assistant. The current proverbs are ${JSON.stringify(state.proverbs)}.`,
+    content: `You are a function-calling assistant. For ANY weather question, you MUST call the getWeather function. Do NOT provide weather information without calling the function first. Example: User asks "What's the weather in Montreal?" - you MUST call getWeather({location: "Montreal"}).`,
   });
 
   // 5.4 Invoke the model with the system message and the messages in the state
@@ -82,7 +102,7 @@ async function chat_node(state: AgentState, config: RunnableConfig) {
 
 // 6. Define the function that determines whether to continue or not,
 //    this is used to determine the next node to run
-function shouldContinue({ messages, tools }: AgentState) {
+export function shouldContinue({ messages, tools }: AgentState) {
   // 6.1 Get the last message from the state
   const lastMessage = messages[messages.length - 1] as AIMessage;
 
@@ -90,9 +110,9 @@ function shouldContinue({ messages, tools }: AgentState) {
   if (lastMessage.tool_calls?.length) {
     const toolCallName = lastMessage.tool_calls![0].name;
 
-    // 7.3 Only route to the tool node if the tool call is not a CopilotKit action
-    if (!tools || tools.every((tool) => tool.name !== toolCallName)) {
-      return "tool_node"
+    // 7.3 Route getWeather calls to tool_node, let CopilotKit actions be handled by frontend
+    if (toolCallName === "getWeather") {
+      return "tool_node";
     }
   }
 

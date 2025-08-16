@@ -2,7 +2,8 @@
 
 import { useCoAgent, useCopilotAction } from "@copilotkit/react-core";
 import { CopilotKitCSSProperties, CopilotSidebar } from "@copilotkit/react-ui";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { WeatherService } from "../lib/services/weather.service";
 
 export default function CopilotKitPage() {
   const [themeColor, setThemeColor] = useState("#6366f1");
@@ -28,8 +29,8 @@ export default function CopilotKitPage() {
         clickOutsideToClose={false}
         defaultOpen={true}
         labels={{
-          title: "Popup Assistant",
-          initial: "👋 Hi, there! You're chatting with an agent. This agent comes with a few tools to get you started.\n\nFor example you can try:\n- **Frontend Tools**: \"Set the theme to orange\"\n- **Shared State**: \"Write a proverb about AI\"\n- **Generative UI**: \"Get the weather in SF\"\n\nAs you interact with the agent, you'll see the UI update in real-time to reflect the agent's **state**, **tool calls**, and **progress**."
+          title: "🌤️ WeatherBot",
+          initial: "👋 Hello! I'm WeatherBot, your friendly AI weather forecaster!\n\nI can help you with:\n- **Current Weather**: \"What's the weather in New York?\"\n- **Your Location**: \"What's the weather at my current location?\"\n- **Planning Advice**: \"Should I bring an umbrella today?\"\n- **Multiple Locations**: \"Compare weather in Paris and London\"\n- **Theme Colors**: \"Set the theme to sky blue\"\n\nJust ask me about any location and I'll give you detailed weather info with helpful tips for your day!"
         }}
       />
     </main>
@@ -38,47 +39,125 @@ export default function CopilotKitPage() {
 
 // State of the agent, make sure this aligns with your agent's state.
 type AgentState = {
-  proverbs: string[];
+  lastLocation: string;
 }
 
 function YourMainContent({ themeColor }: { themeColor: string }) {
+  const [debugCoords, setDebugCoords] = useState<{lat: number, lon: number} | null>(null);
+  const weatherService = new WeatherService();
+  const DEFAULT_LOCATION = weatherService.getDefaultLocation();
+  
+  const setLocationSafely = (location: string) => {
+    setState({...state, lastLocation: location || DEFAULT_LOCATION});
+  };
+  
   // 🪁 Shared State: https://docs.copilotkit.ai/coagents/shared-state
   const {state, setState} = useCoAgent<AgentState>({
-    name: "starterAgent",
+    name: "weatherAgent",
     initialState: {
-      proverbs: [
-        "CopilotKit may be new, but its the best thing since sliced bread.",
-      ],
+      lastLocation: "Getting location...",
     },
   })
 
+  // Get initial location using weather service directly
+  useEffect(() => {
+    const getInitialLocation = async () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            try {
+              const weatherService = new WeatherService();
+              const weather = await weatherService.getWeatherByCoordinates(latitude, longitude);
+              console.log(weather)
+              setState({...state, lastLocation: weather.name});
+            } catch (error) {
+              setState({...state, lastLocation: 'Location service error'});
+            }
+          },
+          () => setState({...state, lastLocation: 'Geolocation denied'}),
+          { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 }
+        );
+      } else {
+        setState({...state, lastLocation: 'Geolocation not supported'});
+      }
+    };
+    
+    getInitialLocation();
+  }, []);
+
   // 🪁 Frontend Actions: https://docs.copilotkit.ai/coagents/frontend-actions
   useCopilotAction({
-    name: "addProverb",
-    description: "Add a proverb to the list.",
-    parameters: [{
-      name: "proverb",
-      description: "The proverb to add. Make it witty, short and concise.",
-      required: true,
-    }],
-    handler: ({ proverb }) => {
-      setState({
-        ...state,
-        proverbs: [...state.proverbs, proverb],
+    name: "updateLocationDisplay",
+    description: "Update location display.",
+    parameters: [{ name: "location", type: "string", required: true }],
+    handler: ({ location }) => setState({ ...state, lastLocation: location }),
+  });
+
+  useCopilotAction({
+    name: "getWeatherByCoordinates",
+    description: "Get weather and city name from coordinates using weather service.",
+    parameters: [
+      { name: "latitude", type: "number", required: true },
+      { name: "longitude", type: "number", required: true }
+    ],
+    handler: async ({ latitude, longitude }) => {
+      // This will be handled by the agent's weather service
+      return { latitude, longitude };
+    },
+  });
+
+  useCopilotAction({
+    name: "getCurrentLocation",
+    description: "Get the user's current GPS coordinates. Returns latitude and longitude.",
+    parameters: [],
+    handler: async () => {
+      // Use debug coordinates if set
+      if (debugCoords) {
+        return { latitude: debugCoords.lat, longitude: debugCoords.lon };
+      }
+
+      if (!navigator.geolocation) {
+        throw new Error('Geolocation is not supported by this browser.');
+      }
+
+      return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            resolve({ latitude, longitude });
+          },
+          (error) => {
+            reject(new Error(`Location error: ${error.message}`));
+          },
+          { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 }
+        );
       });
     },
   });
 
   //🪁 Generative UI: https://docs.copilotkit.ai/coagents/generative-ui
   useCopilotAction({
-    name: "getWeather",
-    description: "Get the weather for a given location.",
-    available: "disabled",
+    name: "displayWeatherCard",
+    description: "Display weather card with weather data.",
     parameters: [
       { name: "location", type: "string", required: true },
+      { name: "temperature", type: "number", required: false },
+      { name: "description", type: "string", required: false },
+      { name: "humidity", type: "number", required: false },
+      { name: "windSpeed", type: "number", required: false },
+      { name: "feelsLike", type: "number", required: false },
     ],
     render: ({ args }) => {
-      return <WeatherCard location={args.location} themeColor={themeColor} />
+      return <WeatherCard 
+        location={args.location} 
+        temperature={args.temperature}
+        description={args.description}
+        humidity={args.humidity}
+        windSpeed={args.windSpeed}
+        feelsLike={args.feelsLike}
+        themeColor={themeColor} 
+      />
     },
   });
 
@@ -88,32 +167,102 @@ function YourMainContent({ themeColor }: { themeColor: string }) {
       className="h-screen w-screen flex justify-center items-center flex-col transition-colors duration-300"
     >
       <div className="bg-white/20 backdrop-blur-md p-8 rounded-2xl shadow-xl max-w-2xl w-full">
-        <h1 className="text-4xl font-bold text-white mb-2 text-center">Proverbs</h1>
-        <p className="text-gray-200 text-center italic mb-6">This is a demonstrative page, but it could be anything you want! 🪁</p>
+        <h1 className="text-4xl font-bold text-white mb-2 text-center">🌤️ WeatherBot</h1>
+        <p className="text-gray-200 text-center italic mb-6">Your AI Weather Forecaster - Ask me about weather anywhere! 🌍</p>
         <hr className="border-white/20 my-6" />
-        <div className="flex flex-col gap-3">
-          {state.proverbs?.map((proverb, index) => (
-            <div 
-              key={index} 
-              className="bg-white/15 p-4 rounded-xl text-white relative group hover:bg-white/20 transition-all"
-            >
-              <p className="pr-8">{proverb}</p>
-              <button 
-                onClick={() => setState({
-                  ...state,
-                  proverbs: state.proverbs?.filter((_, i) => i !== index),
-                })}
-                className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity 
-                  bg-red-500 hover:bg-red-600 text-white rounded-full h-6 w-6 flex items-center justify-center"
-              >
-                ✕
-              </button>
+        <div className="text-center">
+          <div className="bg-white/15 p-6 rounded-xl text-white">
+            <h3 className="text-xl font-semibold mb-2">Current Location</h3>
+            <p className="text-2xl font-bold">{state.lastLocation}</p>
+            <p className="text-sm text-gray-200 mt-2">Ask me about weather here or anywhere else!</p>
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-4">
+            <div className="bg-white/10 p-4 rounded-lg">
+              <p className="text-white font-medium">Try asking:</p>
+              <p className="text-gray-200 text-sm">"What's the weather like?"</p>
             </div>
-          ))}
+            <div className="bg-white/10 p-4 rounded-lg">
+              <p className="text-white font-medium">Or specify:</p>
+              <p className="text-gray-200 text-sm">"Weather in Montreal"</p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <div className="bg-white/10 p-4 rounded-lg text-center">
+              <p className="text-white font-medium mb-1">📍 Current Location</p>
+              <p className="text-gray-200 text-sm">"What's the weather at my current location?"</p>
+            </div>
+          </div>
+          
+          {/* Debug Coordinates Override */}
+          <div className="mt-4">
+            <div className="bg-white/5 p-4 rounded-lg">
+              <p className="text-white font-medium mb-2">🔧 Debug Mode</p>
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                <button 
+                  onClick={() => {
+                    setDebugCoords({lat: 40.7128, lon: -74.0060});
+                    setState({...state, lastLocation: 'New York'});
+                  }}
+                  className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded"
+                >
+                  NYC
+                </button>
+                <button 
+                  onClick={() => {
+                    setDebugCoords({lat: 48.8566, lon: 2.3522});
+                    setState({...state, lastLocation: 'Paris'});
+                  }}
+                  className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded"
+                >
+                  Paris
+                </button>
+                <button 
+                  onClick={() => {
+                    setDebugCoords({lat: 35.6762, lon: 139.6503});
+                    setState({...state, lastLocation: 'Tokyo'});
+                  }}
+                  className="bg-purple-500 hover:bg-purple-600 text-white text-xs px-2 py-1 rounded"
+                >
+                  Tokyo
+                </button>
+              </div>
+              <button 
+                onClick={() => {
+                  setDebugCoords(null);
+                  const resetLocation = async (lat: number, lon: number) => {
+                    try {
+                      const weatherService = new WeatherService();
+                      const weather = await weatherService.getWeatherByCoordinates(lat, lon);
+                      setLocationSafely(weather.name);
+                    } catch {
+                      setLocationSafely(DEFAULT_LOCATION);
+                    }
+                  };
+                  
+                  if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                      (pos) => resetLocation(pos.coords.latitude, pos.coords.longitude),
+                      () => setLocationSafely(DEFAULT_LOCATION)
+                    );
+                  } else {
+                    setLocationSafely(DEFAULT_LOCATION);
+                  }
+                }}
+                className="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded w-full"
+              >
+                Reset to Real Location
+              </button>
+              {debugCoords && (
+                <p className="text-gray-300 text-xs mt-1">
+                  Override: {debugCoords.lat === 40.7128 ? 'New York' : 
+                           debugCoords.lat === 48.8566 ? 'Paris' : 
+                           debugCoords.lat === 35.6762 ? 'Tokyo' : 
+                           `${debugCoords.lat.toFixed(2)}, ${debugCoords.lon.toFixed(2)}`}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
-        {state.proverbs?.length === 0 && <p className="text-center text-white/80 italic my-8">
-          No proverbs yet. Ask the assistant to add some!
-        </p>}
       </div>
     </div>
   );
@@ -129,9 +278,24 @@ function SunIcon() {
   );
 }
 
-// Weather card component where the location and themeColor are based on what the agent
-// sets via tool calls.
-function WeatherCard({ location, themeColor }: { location?: string, themeColor: string }) {
+// Weather card component with real weather data
+function WeatherCard({ 
+  location, 
+  temperature, 
+  description, 
+  humidity, 
+  windSpeed, 
+  feelsLike, 
+  themeColor 
+}: { 
+  location?: string;
+  temperature?: number;
+  description?: string;
+  humidity?: number;
+  windSpeed?: number;
+  feelsLike?: number;
+  themeColor: string;
+}) {
   return (
     <div
     style={{ backgroundColor: themeColor }}
@@ -140,30 +304,29 @@ function WeatherCard({ location, themeColor }: { location?: string, themeColor: 
     <div className="bg-white/20 p-4 w-full">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xl font-bold text-white capitalize">{location}</h3>
-          <p className="text-white">Current Weather</p>
+          <h3 className="text-xl font-bold text-white capitalize">Current Weather in {location}</h3>
         </div>
         <SunIcon />
       </div>
       
       <div className="mt-4 flex items-end justify-between">
-        <div className="text-3xl font-bold text-white">70°</div>
-        <div className="text-sm text-white">Clear skies</div>
+        <div className="text-3xl font-bold text-white">{temperature || 70}°</div>
+        <div className="text-sm text-white capitalize">{description || 'Clear skies'}</div>
       </div>
       
       <div className="mt-4 pt-4 border-t border-white">
         <div className="grid grid-cols-3 gap-2 text-center">
           <div>
             <p className="text-white text-xs">Humidity</p>
-            <p className="text-white font-medium">45%</p>
+            <p className="text-white font-medium">{humidity || 45}%</p>
           </div>
           <div>
             <p className="text-white text-xs">Wind</p>
-            <p className="text-white font-medium">5 mph</p>
+            <p className="text-white font-medium">{windSpeed || 5} mph</p>
           </div>
           <div>
             <p className="text-white text-xs">Feels Like</p>
-            <p className="text-white font-medium">72°</p>
+            <p className="text-white font-medium">{feelsLike || 72}°</p>
           </div>
         </div>
       </div>

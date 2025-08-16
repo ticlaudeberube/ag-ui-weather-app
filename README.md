@@ -104,6 +104,7 @@ echo "COPILOT_CLOUD_PUBLIC_API_KEY=your-copilotkit-key" >> .env.local
 # MCP Server API Keys (optional)
 echo "BRAVE_API_KEY=your-brave-api-key" >> .env.local
 echo "GITHUB_PERSONAL_ACCESS_TOKEN=your-github-token" >> .env.local
+echo "NEXT_PUBLIC_OPENWEATHER_API_KEY=your-openweather-api-key" >> .env.local
 ```
 
 **API Key Sources:**

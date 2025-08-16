@@ -15,9 +15,9 @@ const serviceAdapter = new ExperimentalEmptyAdapter();
 //    integration to setup the connection.
 const runtime = new CopilotRuntime({
   agents: {
-    starterAgent: new LangGraphAgent({
+    weatherAgent: new LangGraphAgent({
       deploymentUrl: process.env.LANGGRAPH_DEPLOYMENT_URL || "http://localhost:8123",
-      graphId: "starterAgent",
+      graphId: "weatherAgent",
       langsmithApiKey: process.env.LANGSMITH_API_KEY || "",
     })
   }   
