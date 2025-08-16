@@ -140,7 +140,34 @@ The following scripts can also be run using your preferred package manager:
 - `build` - Builds the Next.js application for production
 - `start` - Starts the production server
 - `lint` - Runs ESLint for code linting
+- `test` - Runs all tests from both agent and app
+- `test:watch` - Runs tests in watch mode
+- `test:coverage` - Runs tests with unified coverage report
 - `install:agent` - Installs Python dependencies for the agent
+
+## Testing
+
+The project includes comprehensive testing for both the agent and application code:
+
+```bash
+# Run all tests
+npm test
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run tests in watch mode
+npm run test:watch
+```
+
+**Test Coverage:**
+- **Agent**: 97.61% coverage (LangGraph workflows, tools, model provider)
+- **App**: 88.88% coverage (WeatherService, location utilities)
+- **Overall**: 93.69% unified coverage
+
+Tests are automatically discovered from:
+- `agent/src/**/*.test.ts` - Agent-specific tests
+- `src/**/*.test.ts` - Application tests
 
 ## MCP Servers
 
@@ -214,3 +241,9 @@ If MCP servers aren't working:
 1. Ensure required environment variables are set
 2. Check that MCP packages are installed globally: `npm install -g @modelcontextprotocol/server-*`
 3. Verify API keys for Brave Search and GitHub
+
+### Test Issues
+If tests are failing:
+1. Ensure all dependencies are installed: `npm install`
+2. Check that mock data files exist in `src/lib/services/mocks/`
+3. Run tests with verbose output: `npm test -- --verbose`

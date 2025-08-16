@@ -56,4 +56,104 @@ describe('WeatherService', () => {
       feelsLike: 72
     });
   });
+
+  test('should handle coordinate string input', async () => {
+    const result = await weatherService.getWeather('40.7128, -74.0060');
+    
+    expect(result.location).toBe('40.7128, -74.006');
+    expect(result.name).toBe('New York');
+  });
+
+  test('should get default location', () => {
+    const defaultLocation = weatherService.getDefaultLocation();
+    expect(defaultLocation).toBe('montreal');
+  });
+
+  test('should check if location is metric', async () => {
+    const isMetric = weatherService.isMetricLocation('Paris');
+    expect(typeof isMetric).toBe('boolean');
+  });
+
+  test('should handle unknown location', async () => {
+    expect(() => weatherService.getWeather('UnknownCity')).rejects.toThrow();
+  });
+
+  test('should handle API error response', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 404
+    } as Response);
+
+    const result = await weatherService.getWeather('New York');
+    expect(result.name).toBe('New York'); // Falls back to mock
+  });
+
+  test('should handle coordinates API error', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500
+    } as Response);
+
+    const result = await weatherService.getWeatherByCoordinates(40.7128, -74.0060);
+    expect(result.name).toBe('New York'); // Falls back to mock
+  });
+
+  test('should handle unknown coordinates', async () => {
+    const result = await weatherService.getWeatherByCoordinates(0, 0);
+    expect(result.name).toBe('Montreal'); // Default fallback
+  });
+
+  test('should use API when key is available', async () => {
+    process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY = 'test-key';
+    const weatherServiceWithKey = new WeatherService();
+    
+    const mockData = {
+      name: 'Paris',
+      main: { temp: 15, feels_like: 17, humidity: 60 },
+      weather: [{ description: 'cloudy' }],
+      wind: { speed: 5 }
+    };
+    
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockData
+    } as Response);
+    
+    const result = await weatherServiceWithKey.getWeather('Paris');
+    expect(result.temperature).toBe(15);
+    
+    delete process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+  });
+
+  test('should use API for coordinates when key is available', async () => {
+    process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY = 'test-key';
+    const weatherServiceWithKey = new WeatherService();
+    
+    const mockData = {
+      name: 'Tokyo',
+      main: { temp: 25, feels_like: 27, humidity: 70 },
+      weather: [{ description: 'sunny' }],
+      wind: { speed: 3 }
+    };
+    
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockData
+    } as Response);
+    
+    const result = await weatherServiceWithKey.getWeatherByCoordinates(35.6762, 139.6503);
+    expect(result.temperature).toBe(25);
+    
+    delete process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+  });
+
+  test('should check metric with API key', () => {
+    process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY = 'test-key';
+    const weatherServiceWithKey = new WeatherService();
+    
+    const isMetric = weatherServiceWithKey.isMetricLocation('Paris');
+    expect(isMetric).toBe(true);
+    
+    delete process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+  });
 });
