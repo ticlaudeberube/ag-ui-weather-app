@@ -1,0 +1,62 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Debug Dev Server",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "dev:ui"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new"
+      },
+      "options": {
+        "env": {
+          "NODE_OPTIONS": "--inspect"
+        }
+      }
+    },
+    {
+      "label": "Kill Port 8123",
+      "type": "shell",
+      "command": "lsof",
+      "args": ["-ti:8123", "|", "xargs", "kill", "-9"],
+      "options": {
+        "shell": true
+      },
+      "presentation": {
+        "echo": false,
+        "reveal": "never"
+      }
+    },
+    {
+      "label": "Start Agent Server",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "dev:agent"],
+      "dependsOn": "Kill Port 8123",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Debug Full Stack",
+      "dependsOrder": "parallel",
+      "dependsOn": ["Debug Dev Server", "Start Agent Server"]
+    },
+    {
+      "label": "Clean Debug",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Kill Port 8123", "Debug Full Stack"]
+    }
+  ]
+}
