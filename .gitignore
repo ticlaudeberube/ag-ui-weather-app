@@ -46,3 +46,4 @@ yarn.lock
 pnpm-lock.yaml
 bun.lockb
 agent/coverage
+tailwindcss-*.log
